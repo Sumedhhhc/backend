@@ -5,6 +5,11 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   number: { type: String, required: true },
   password: { type: String, required: true },
+  userType: {
+    type: String,
+    enum: ["individual", "cafe", "restaurant", "hostel", "hotel", "organization"],
+    required: true
+  },
   address: {
     type: {
       formatted: String,

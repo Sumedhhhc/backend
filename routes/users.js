@@ -4,6 +4,22 @@ import NGO from '../models/NGO.js';
 
 const router = express.Router();
 
+router.get('/by-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    let account = await User.findOne({ email }, { password: 0 });
+    if (account) return res.json({ success: true, type: 'user', data: account });
+
+    account = await NGO.findOne({ email }, { password: 0 });
+    if (account) return res.json({ success: true, type: 'ngo', data: account });
+
+    res.status(404).json({ success: false, message: 'User/NGO not found' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const { type, email } = req.query;
