@@ -36,45 +36,55 @@ router.get('/requests', async (req, res) => {
   }
 });
 
+// Get history using EMAIL instead of userId
+router.get('/history/email/:email', async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    // Get user by email
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.json({ success: false, message: "User not found" });
+
+    // Fetch all donations by this user
+    const history = await DonationRequest
+      .find({ userId: user._id })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, history });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}); 
+
 // Accept/Reject request
 router.post('/:id/:decision', async (req, res) => {
   try {
     const { id, decision } = req.params;
+    const { ngoId } = req.body;  // ngoId must be sent by dashboard
 
     const dr = await DonationRequest.findById(id);
     if (!dr) return res.json({ success: false, message: 'Request not found' });
 
+    // Update status
     dr.status = decision === 'accept' ? 'accepted' : 'rejected';
 
-    if (decision === 'accept') {
-      dr.coinsEarned = 50; // save coins for history display
-
-      // get NGO name from database
-      const ngo = await NGO.findById(dr.ngoId);
-      if (ngo) dr.ngoName = ngo.name;
-
-      // reward user
-      await User.findByIdAndUpdate(dr.userId, { $inc: { coins: 50 } });
+    // Store the NGO that processed the request
+    if (decision === 'accept' && ngoId) {
+      dr.ngoId = ngoId;
     }
 
     await dr.save();
 
-    res.json({ success: true });
+    // Reward coins
+    if (decision === 'accept') {
+      await User.findByIdAndUpdate(dr.userId, { $inc: { coins: 50 } });
+    }
+
+    res.json({ success: true, updated: dr });
   } catch (err) {
     res.json({ success: false, message: err.message });
-  }
-});
-
-// Get history of all donations by a user
-router.get('/history/:userId', async (req, res) => {
-  try {
-    const history = await DonationRequest.find({ userId: req.params.userId })
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, history });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
   }
 });
 
