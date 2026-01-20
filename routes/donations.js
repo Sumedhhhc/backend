@@ -30,7 +30,19 @@ router.get('/requests', async (req, res) => {
       .find({ status: 'pending' })
       .populate('userId', 'name email address');
 
-    res.json({ success: true, requests });
+    // Flatten some user fields to make it easy for frontends to consume
+    const out = requests.map(r => {
+      const obj = r.toObject ? r.toObject() : r;
+      const user = obj.userId || {};
+      return {
+        ...obj,
+        userName: (user && (user.name || user.email)) || obj.userName || null,
+        userEmail: user && user.email,
+        userAddress: user && user.address,
+      };
+    });
+
+    res.json({ success: true, requests: out });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -39,7 +51,7 @@ router.get('/requests', async (req, res) => {
 // Get history using EMAIL instead of userId
 router.get('/history/email/:email', async (req, res) => {
   try {
-    const email = req.params.email;
+    const email = decodeURIComponent(req.params.email);
 
     // Get user by email
     const user = await User.findOne({ email });

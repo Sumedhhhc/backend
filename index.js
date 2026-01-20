@@ -21,6 +21,16 @@ app.use(express.urlencoded({ limit: '2mb', extended: true }));
 app.use("/uploads", express.static("uploads"));
 
 
+// simple request logger to help debugging network calls from device
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip}`);
+  next();
+});
+
+// enable CORS preflight responses for all routes (safe default)
+app.options('*', cors());
+
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -46,14 +56,20 @@ app.get('/', (req, res) => {
   res.send('Helphub API running 🚀');
 });
 
+// lightweight ping endpoint for quick connectivity checks from device
+app.get('/api/ping', (req, res) => {
+  res.json({ ok: true, ts: Date.now() });
+});
+
 // Error handler middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Start server
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  console.log(`🚀 Server started on port ${PORT}`);
+// Start server — listen on all interfaces by default so devices on the LAN can reach it
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Server started on ${HOST}:${PORT}`);
 });
